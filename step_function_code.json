@@ -1,0 +1,85 @@
+{
+  "Comment": "A description of my state machine",
+  "StartAt": "Daily Flights Crawler",
+  "States": {
+    "Daily Flights Crawler": {
+      "Type": "Task",
+      "Parameters": {
+        "Name": "daily_flights_crawler"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:glue:startCrawler",
+      "Next": "Get Crawler"
+    },
+    "Get Crawler": {
+      "Type": "Task",
+      "Parameters": {
+        "Name": "daily_flights_crawler"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:glue:getCrawler",
+      "Next": "Crawler Still Running?"
+    },
+    "Crawler Still Running?": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Crawler.State",
+          "StringMatches": "RUNNING",
+          "Next": "Wait"
+        }
+      ],
+      "Default": "Daily Flights ETL"
+    },
+    "Wait": {
+      "Type": "Wait",
+      "Seconds": 5,
+      "Next": "Get Crawler"
+    },
+    "Daily Flights ETL": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::glue:startJobRun.sync",
+      "Parameters": {
+        "JobName": "Daily Flights ETL"
+      },
+      "Next": "Choice",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "Next": "Failed Notification"
+        }
+      ]
+    },
+    "Choice": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.JobRunState",
+          "StringMatches": "SUCCEEDED",
+          "Next": "Success Notification"
+        }
+      ],
+      "Default": "Failed Notification"
+    },
+    "Failed Notification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "Message.$": "$",
+        "TopicArn": "arn:aws:sns:us-east-2:891377180984:Airline_Notifications"
+      },
+      "End": true
+    },
+    "Success Notification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sns:publish",
+      "Parameters": {
+        "TopicArn": "arn:aws:sns:us-east-2:891377180984:Airline_Notifications",
+        "Message": {
+          "text": "Glue Job Completed Successfully"
+        }
+      },
+      "End": true
+    }
+  }
+}

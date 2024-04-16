@@ -1,0 +1,14 @@
+{
+  "source": ["aws.s3"],
+  "detail-type": ["Object Created"],
+  "detail": {
+    "bucket": {
+      "name": ["airline-landing-zn"]
+    },
+    "object": {
+      "key": [{
+        "suffix": ".csv"
+      }]
+    }
+  }
+}
